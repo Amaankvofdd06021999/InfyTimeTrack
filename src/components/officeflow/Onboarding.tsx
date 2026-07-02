@@ -81,18 +81,23 @@ export function Onboarding() {
           {step === 2 && (
             <div className="space-y-4">
               <div className="text-center">
-                <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-brand-lime text-ink mb-4">
+                <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-brand-lime text-ink mb-4 animate-pulse">
                   <Bell className="h-8 w-8" />
                 </div>
-                <h2 className="text-2xl font-extrabold">Notifications</h2>
+                <h2 className="text-2xl font-extrabold">🔔 Enable Notifications</h2>
                 <p className="mt-2 text-sm text-ink-muted">
-                  Get reminded when you reach time milestones
+                  <strong>Important:</strong> Get alerts when you reach 4 hours and 6 hours of office time!
                 </p>
               </div>
-              <label className="flex items-center justify-between p-4 rounded-lg bg-canvas cursor-pointer">
+              <label className="flex items-center justify-between p-4 rounded-lg bg-canvas cursor-pointer border-2 border-brand-blue">
                 <div className="flex-1">
-                  <div className="font-semibold">Enable Notifications</div>
-                  <div className="text-xs text-ink-muted">Get alerts at 4h and 6h marks</div>
+                  <div className="font-semibold">🔔 Enable Browser Notifications</div>
+                  <div className="text-xs text-ink-muted">
+                    Get alerts even when the app is in background
+                  </div>
+                  <div className="text-[11px] text-brand-blue font-semibold mt-1">
+                    Chrome/Edge will ask for permission when you enable this
+                  </div>
                 </div>
                 <input
                   type="checkbox"

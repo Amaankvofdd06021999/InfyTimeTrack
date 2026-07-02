@@ -116,29 +116,57 @@ export function SettingsView() {
         </button>
       </section>
 
-      <section className="rounded-xl bg-white p-5 shadow-sm">
+      <section className="rounded-xl bg-white p-5 shadow-sm border-2 border-brand-blue">
         <div className="flex items-start gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-lime">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-lime animate-pulse">
             <Bell className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="text-base font-bold">System notifications</div>
+            <div className="text-base font-bold">🔔 Enable Notifications</div>
             <div className="text-xs text-ink-muted">
-              In-app banners always work. Enable browser notifications for 4h / 6h alerts even when the tab is in the
-              background.
+              Get alerts when you reach 4 hours and 6 hours of office time. Notifications work even when the app is in the background!
             </div>
-            <div className="mt-2 text-[11px] font-semibold text-ink-muted">Status: {permLabel}</div>
+            <div className="mt-2 text-[11px] font-semibold text-ink-muted">
+              Status: <span className={notifyPermission === "granted" ? "text-green-600" : "text-orange-600"}>
+                {permLabel}
+              </span>
+            </div>
+            {notifyPermission === "default" && (
+              <div className="mt-2 text-[11px] text-brand-blue font-semibold">
+                👆 Click the button below to enable notifications!
+              </div>
+            )}
           </div>
         </div>
         <button
-          onClick={() => void requestNotifications()}
+          onClick={async () => {
+            const result = await requestNotifications();
+            if (result === "granted") {
+              // Test notification
+              new Notification("InfyTimeTrack Notifications Enabled! 🎉", {
+                body: "You'll receive alerts at 4h and 6h milestones",
+                icon: '/logoforIT.png'
+              });
+            }
+          }}
           disabled={notifyPermission === "granted" || notifyPermission === "denied" || notifyPermission === "unsupported"}
           className={`mt-4 w-full rounded-2xl px-4 py-3 text-sm font-bold tap tap-press ${
-            notifyPermission === "default" ? "bg-brand-blue text-white" : "bg-canvas text-ink-muted"
+            notifyPermission === "default" ? "bg-brand-blue text-white animate-pulse" : "bg-canvas text-ink-muted"
           }`}
         >
-          {notifyPermission === "granted" ? "Already enabled" : notifyPermission === "denied" ? "Blocked — enable in browser settings" : notifyPermission === "unsupported" ? "Unsupported browser" : "Enable browser notifications"}
+          {notifyPermission === "granted" ? "✅ Notifications Enabled" : notifyPermission === "denied" ? "❌ Blocked — enable in browser settings" : notifyPermission === "unsupported" ? "Unsupported browser" : "🔔 Enable Browser Notifications"}
         </button>
+        {notifyPermission === "denied" && (
+          <div className="mt-3 text-[11px] text-destructive">
+            <strong>To enable notifications:</strong>
+            <ol className="mt-1 ml-3 list-decimal">
+              <li>Click the lock icon in your browser's address bar</li>
+              <li>Find "Notifications" in the permissions</li>
+              <li>Change it from "Block" to "Allow"</li>
+              <li>Refresh this page</li>
+            </ol>
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl bg-white p-5 shadow-sm">

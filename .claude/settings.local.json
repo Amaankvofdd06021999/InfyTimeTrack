@@ -17,7 +17,9 @@
       "Bash(python -m http.server 8000)",
       "Bash(npm run build:vercel)",
       "Bash(python -m http.server 8080)",
-      "Bash(python -m http.server 8090)"
+      "Bash(python -m http.server 8090)",
+      "Bash(git add src/client-app.tsx)",
+      "Bash(git commit -m \"Fix navigation in standalone client app - correct prop names and view IDs\")"
     ],
     "deny": [],
     "ask": []
