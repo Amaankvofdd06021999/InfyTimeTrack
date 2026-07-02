@@ -11,7 +11,7 @@ import { BottomNav } from './components/officeflow/BottomNav';
 import { BannerHost } from './components/officeflow/BannerHost';
 import { useStore } from './lib/officeflow/store';
 
-type View = 'dashboard' | 'calendar' | 'logs' | 'settings';
+type View = 'dashboard' | 'calendar' | 'log' | 'settings';
 
 function Shell() {
   const { state } = useStore();
@@ -28,11 +28,11 @@ function Shell() {
         <div className="mx-auto max-w-md">
           {view === 'dashboard' && <Dashboard />}
           {view === 'calendar' && <CalendarView />}
-          {view === 'logs' && <LogView />}
+          {view === 'log' && <LogView />}
           {view === 'settings' && <SettingsView />}
         </div>
       </main>
-      <BottomNav view={view} setView={setView} />
+      <BottomNav view={view} onChange={setView} />
     </div>
   );
 }
