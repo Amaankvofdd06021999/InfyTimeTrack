@@ -9,7 +9,8 @@
       "Bash(git add -A)",
       "Bash(git commit -m \"Fix build error: Replace smart quotes with regular quotes in store.tsx\")",
       "Bash(git push)",
-      "Bash(git commit -m \"Update favicon and icons to use logoforIT branding\")"
+      "Bash(git commit -m \"Update favicon and icons to use logoforIT branding\")",
+      "Bash(git commit -m \"Add Vercel configuration for proper deployment\")"
     ],
     "deny": [],
     "ask": []
