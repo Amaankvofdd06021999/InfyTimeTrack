@@ -1,16 +1,4 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": ".output/public",
-  "framework": null,
-  "functions": {
-    "api/*.js": {
-      "runtime": "@vercel/node@latest"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "dist"
 }

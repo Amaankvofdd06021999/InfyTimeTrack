@@ -13,7 +13,11 @@
       "Bash(git commit -m \"Add Vercel configuration for proper deployment\")",
       "Bash(git commit -m \"$(cat <<''EOF''\nFix: Downgrade React to 18.3.1 for compatibility\n\n- Downgraded React and React-DOM from 19.2.7 to 18.3.1\n- Fixes useSyncExternalStoreWithSelector import error\n- Resolves blank screen issue on Vercel deployment\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(npm run build)",
-      "Bash(npm install --save-dev @tanstack/start-vite-plugin @vercel/node)"
+      "Bash(npm install --save-dev @tanstack/start-vite-plugin @vercel/node)",
+      "Bash(python -m http.server 8000)",
+      "Bash(npm run build:vercel)",
+      "Bash(python -m http.server 8080)",
+      "Bash(python -m http.server 8090)"
     ],
     "deny": [],
     "ask": []
