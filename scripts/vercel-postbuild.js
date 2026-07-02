@@ -1,6 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 
+// Find the actual built CSS and JS files
+const assetsDir = path.join(process.cwd(), '.output', 'public', 'assets');
+let cssFile = '';
+let jsFile = '';
+
+try {
+  const files = fs.readdirSync(assetsDir);
+  cssFile = files.find(f => f.startsWith('styles-') && f.endsWith('.css')) || '';
+  jsFile = files.find(f => f.startsWith('index-') && f.endsWith('.js')) || '';
+
+  console.log(`Found CSS: ${cssFile}`);
+  console.log(`Found JS: ${jsFile}`);
+} catch (error) {
+  console.error('Warning: Could not read assets directory:', error);
+}
+
 // Create index.html in the output directory after build
 const indexHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -29,11 +45,11 @@ const indexHtml = `<!DOCTYPE html>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    ${cssFile ? `<link rel="stylesheet" href="/assets/${cssFile}">` : ''}
   </head>
   <body>
     <div id="root"></div>
-    <link rel="stylesheet" href="/assets/styles-D9BcwLvc.css">
-    <script type="module" src="/assets/index-CzA-yw8l.js"></script>
+    ${jsFile ? `<script type="module" src="/assets/${jsFile}"></script>` : ''}
     <script>
       // Register service worker for PWA functionality
       if ('serviceWorker' in navigator) {
