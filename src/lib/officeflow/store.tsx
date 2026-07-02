@@ -146,7 +146,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         Notification.permission === "granted"
       ) {
         try {
-          new Notification(title, { body, icon: '/favicon.ico' });
+          new Notification(title, { body, icon: '/logoforIT.ico' });
         } catch {
           // ignore
         }
@@ -170,7 +170,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       try {
         new Notification("InfyTimeTrack Notifications Enabled", {
           body: "You will receive alerts at 4h and 6h milestones",
-          icon: '/favicon.ico'
+          icon: '/logoforIT.ico'
         });
       } catch {
         // ignore

@@ -7,7 +7,9 @@
       "Bash(git branch -M main)",
       "Bash(git push -u origin main)",
       "Bash(git add -A)",
-      "Bash(git commit -m \"Fix build error: Replace smart quotes with regular quotes in store.tsx\")"
+      "Bash(git commit -m \"Fix build error: Replace smart quotes with regular quotes in store.tsx\")",
+      "Bash(git push)",
+      "Bash(git commit -m \"Update favicon and icons to use logoforIT branding\")"
     ],
     "deny": [],
     "ask": []

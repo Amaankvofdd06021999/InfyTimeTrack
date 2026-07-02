@@ -9,20 +9,25 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/logoforIT.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/logoforIT.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/icon-maskable.png",
+      "src": "/logoforIT.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/logoforIT.ico",
+      "sizes": "32x32 48x48",
+      "type": "image/x-icon"
     }
   ],
   "categories": ["productivity", "utilities"],
