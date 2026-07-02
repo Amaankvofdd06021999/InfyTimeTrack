@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npm run dev)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(git commit -m \"Initial commit - InfyTimeTrack: Complete office hours tracking app with PWA support\")",
+      "Bash(git branch -M main)",
+      "Bash(git push -u origin main)",
+      "Bash(git add -A)",
+      "Bash(git commit -m \"Fix build error: Replace smart quotes with regular quotes in store.tsx\")"
     ],
     "deny": [],
     "ask": []

@@ -156,9 +156,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const requestNotifications = useCallback(async () => {
-    if (typeof window === "undefined" || !("Notification" in window")) {
+    if (typeof window === "undefined" || !("Notification" in window)) {
       setNotifyPermission("unsupported");
-      pushBanner({ title: "Notifications not supported", body: "Your browser doesn't support notifications", tone: "warning" });
+      pushBanner({ title: "Notifications not supported", body: "Your browser does not support notifications", tone: "warning" });
       return "unsupported" as const;
     }
     const p = await Notification.requestPermission();
@@ -169,7 +169,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Send a test notification
       try {
         new Notification("InfyTimeTrack Notifications Enabled", {
-          body: "You'll receive alerts at 4h and 6h milestones",
+          body: "You will receive alerts at 4h and 6h milestones",
           icon: '/favicon.ico'
         });
       } catch {
