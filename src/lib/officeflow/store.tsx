@@ -2,12 +2,20 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { dateKey, MAX_SESSION_MS, todayKey } from "./utils";
 import { playNotificationSound, playAlarmSound } from "./sound";
 
-export type DayType = "wfo" | "wfh";
+export type DayType = "wfo" | "wfh" | "leave" | "od" | "holiday" | "weekend";
 export interface DayEntry {
   type: DayType;
   hours?: number | null; // WFO: number of hours, or null = manual full day. WFH: undefined.
   loginTs?: number;
   logoutTs?: number;
+  wfhHours?: number; // Hours of WFH applied on a WFO day
+  wfhStartTime?: string; // Suggested WFH start time (HH:MM format)
+  wfhEndTime?: string; // Suggested WFH end time (HH:MM format)
+  edited?: boolean; // Flag to indicate if login/logout was edited
+  cabBookingTime?: string; // Cab booking time (HH:MM format)
+  busTime?: string; // Bus time (HH:MM format)
+  leaveType?: "casual" | "sick" | "earned" | "comp_off"; // Type of leave
+  odPurpose?: string; // Purpose of OD
 }
 export interface Session {
   date: string;
@@ -24,6 +32,19 @@ export interface State {
   localDataEnabled?: boolean;
   notificationsEnabled?: boolean;
   isOnboarded?: boolean;
+  wfoRequiredDays?: number; // Required WFO days per month
+  odAllowancePerMonth?: number; // OD allowance per month (default: 2)
+  leaveBalance?: {
+    casual?: number;
+    sick?: number;
+    earned?: number;
+    comp_off?: number;
+  };
+  transportPreferences?: {
+    defaultCabTime?: string; // Default cab booking time
+    defaultBusTime?: string; // Default bus time
+    reminderMinutesBefore?: number; // Minutes before to remind
+  };
 }
 
 const STORAGE_KEY = "infy_time_track_v1";
@@ -34,6 +55,19 @@ const DEFAULT_STATE: State = {
   localDataEnabled: true,
   notificationsEnabled: true,
   isOnboarded: false,
+  wfoRequiredDays: 9,
+  odAllowancePerMonth: 2,
+  leaveBalance: {
+    casual: 12,
+    sick: 7,
+    earned: 15,
+    comp_off: 0,
+  },
+  transportPreferences: {
+    defaultCabTime: "08:30",
+    defaultBusTime: "08:00",
+    reminderMinutesBefore: 30,
+  },
 };
 
 function loadState(): State {

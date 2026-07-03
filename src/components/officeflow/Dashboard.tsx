@@ -1,8 +1,21 @@
 import { useMemo, useState } from "react";
-import { ArrowUpRight, Bell, Clock3, Flame, Home as HomeIcon, Building2, ChevronLeft } from "lucide-react";
+import { ArrowUpRight, Bell, Clock3, Flame, Home as HomeIcon, Building2, ChevronLeft, AlertCircle, Briefcase, Calendar, Edit3, Bus, FileText } from "lucide-react";
 import { useStore } from "@/lib/officeflow/store";
 import { gamification, monthStats, todayEntry } from "@/lib/officeflow/selectors";
-import { FULL_DAY_HOURS, FULL_DAY_MS, formatHMS, formatHours, formatTime, MAX_SESSION_MS, pad, todayKey } from "@/lib/officeflow/utils";
+import {
+  FULL_DAY_HOURS,
+  FULL_DAY_MS,
+  REQUIRED_OFFICE_HOURS,
+  REQUIRED_OFFICE_MS,
+  formatHMS,
+  formatHours,
+  formatTime,
+  MAX_SESSION_MS,
+  pad,
+  todayKey,
+  calculateWFHNeeded,
+  getMonthStatistics
+} from "@/lib/officeflow/utils";
 import type { View } from "./types";
 
 type DailyStep = "choose" | "wfo-time";
@@ -14,6 +27,14 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
   const today = todayEntry(state);
   const hasSession = state.session != null;
   const isEndOfDay = new Date(now).getHours() >= 17;
+
+  // Calculate monthly statistics
+  const currentDate = new Date();
+  const monthlyStats = useMemo(() => getMonthStatistics(currentDate.getFullYear(), currentDate.getMonth()), [currentDate]);
+
+  // Calculate WFO progress
+  const wfoRequired = state.wfoRequiredDays || 9;
+  const wfoCompleted = stats.wfoFullCount + stats.wfoPartialCount;
 
   const [step, setStep] = useState<DailyStep>("choose");
   const [loginHM, setLoginHM] = useState(() => {
@@ -66,13 +87,23 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
         />
       )}
 
-      {/* Hero WFH-left tile */}
-      <HeroTile
-        left={stats.wfhLeft}
-        allowance={state.allowance}
-        used={stats.wfhUsed}
-        onOpen={() => onNavigate("calendar")}
-      />
+      {/* Hero tiles - WFH and WFO tracking */}
+      <div className="grid grid-cols-2 gap-3">
+        <HeroTile
+          left={stats.wfhLeft}
+          allowance={state.allowance}
+          used={stats.wfhUsed}
+          onOpen={() => onNavigate("calendar")}
+          type="wfh"
+        />
+        <HeroTile
+          left={wfoRequired - wfoCompleted}
+          allowance={wfoRequired}
+          used={wfoCompleted}
+          onOpen={() => onNavigate("calendar")}
+          type="wfo"
+        />
+      </div>
 
       {/* Gamification row */}
       <div className="grid grid-cols-2 gap-3">
@@ -111,11 +142,88 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
           <MiniStat value={`${stats.wfoPartialCount}`} label="Partial" tone="lavender" />
           <MiniStat value={`${stats.wfhCount}`} label="WFH used" tone="lime" />
         </div>
-        <div className="mt-4 flex items-center justify-between rounded-2xl bg-canvas px-4 py-3">
+
+        {/* Monthly workdays and weekends info */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-canvas px-3 py-2">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3 text-ink-muted" />
+              <span className="text-[10px] font-semibold text-ink-muted">Workdays</span>
+            </div>
+            <div className="text-lg font-bold">{monthlyStats.weekdays}</div>
+          </div>
+          <div className="rounded-xl bg-canvas px-3 py-2">
+            <div className="flex items-center gap-1">
+              <HomeIcon className="h-3 w-3 text-ink-muted" />
+              <span className="text-[10px] font-semibold text-ink-muted">Weekends</span>
+            </div>
+            <div className="text-lg font-bold">{monthlyStats.weekends}</div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between rounded-2xl bg-canvas px-4 py-3">
           <div className="flex items-center gap-2 text-xs font-medium text-ink-muted">
             <Clock3 className="h-3.5 w-3.5" /> Office hours this month
           </div>
           <div className="text-sm font-bold tabular-nums">{stats.officeHours.toFixed(1)}h</div>
+        </div>
+      </section>
+
+      {/* Quick Actions */}
+      <section className="rounded-xl bg-white p-5 shadow-sm shadow-black/5">
+        <h2 className="text-base font-bold">Quick Actions</h2>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <button
+            onClick={() => emitAlert("Leave Management", "Feature coming soon", "default")}
+            className="flex items-center gap-3 rounded-lg bg-canvas p-3 text-left tap tap-press"
+          >
+            <div className="rounded-full bg-brand-lime p-2">
+              <FileText className="h-3.5 w-3.5 text-ink" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold">Leaves & OD</div>
+              <div className="text-xs text-ink-muted">Manage applications</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => emitAlert("Transport Schedule", "Feature coming soon", "default")}
+            className="flex items-center gap-3 rounded-lg bg-canvas p-3 text-left tap tap-press"
+          >
+            <div className="rounded-full bg-lavender p-2">
+              <Bus className="h-3.5 w-3.5 text-ink" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold">Transport</div>
+              <div className="text-xs text-ink-muted">Bus & cab reminders</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => emitAlert("Edit Sessions", "You can edit login/logout times from the log view", "default")}
+            className="flex items-center gap-3 rounded-lg bg-canvas p-3 text-left tap tap-press"
+          >
+            <div className="rounded-full bg-brand-blue p-2">
+              <Edit3 className="h-3.5 w-3.5 text-white" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold">Edit Times</div>
+              <div className="text-xs text-ink-muted">Modify sessions</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onNavigate("calendar")}
+            className="flex items-center gap-3 rounded-lg bg-canvas p-3 text-left tap tap-press"
+          >
+            <div className="rounded-full bg-ink p-2">
+              <Calendar className="h-3.5 w-3.5 text-white" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold">Calendar</div>
+              <div className="text-xs text-ink-muted">View full month</div>
+            </div>
+          </button>
         </div>
       </section>
 
@@ -254,7 +362,12 @@ function TimerCard({ onLogout }: { onLogout: () => void }) {
   const { state, now } = useStore();
   const s = state.session!;
   const elapsed = Math.min(MAX_SESSION_MS, now - s.loginTs);
-  const pct = Math.min(100, (elapsed / FULL_DAY_MS) * 100);
+  const pct = Math.min(100, (elapsed / REQUIRED_OFFICE_MS) * 100);
+
+  // Calculate WFH hours needed if logging out now
+  const loginTime = new Date(s.loginTs);
+  const currentTime = new Date(now);
+  const wfhInfo = calculateWFHNeeded(loginTime, currentTime);
 
   // Ring geometry
   const size = 180;
@@ -297,14 +410,32 @@ function TimerCard({ onLogout }: { onLogout: () => void }) {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <div className="text-2xl font-extrabold tabular-nums">{formatHMS(elapsed)}</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider opacity-80">of 6h goal</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider opacity-80">of 9.5h goal</div>
             </div>
           </div>
         </div>
         <div className="mt-4 flex justify-center gap-2">
           <Chip on={elapsed >= 4 * 3600 * 1000}>4h · half day</Chip>
           <Chip on={elapsed >= FULL_DAY_MS}>6h · full day</Chip>
+          <Chip on={elapsed >= REQUIRED_OFFICE_MS}>9.5h · complete</Chip>
         </div>
+
+        {wfhInfo.wfhHoursNeeded > 0 && (
+          <div className="mt-4 rounded-lg bg-white/10 p-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 mt-0.5 text-brand-lime" />
+              <div className="flex-1">
+                <div className="text-xs font-semibold text-brand-lime">WFH Required</div>
+                <div className="mt-1 text-[11px] opacity-90">
+                  You need {wfhInfo.wfhHoursNeeded.toFixed(1)} hours of WFH to complete 9.5 hours today.
+                </div>
+                <div className="mt-1 text-[11px] opacity-80">
+                  Suggested: {wfhInfo.suggestedWFHStart} - {wfhInfo.suggestedWFHEnd}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -322,7 +453,7 @@ function Chip({ on, children }: { on: boolean; children: React.ReactNode }) {
   );
 }
 
-function TodayLoggedCard({ entry }: { entry: { type: "wfo" | "wfh"; hours?: number | null; loginTs?: number } }) {
+function TodayLoggedCard({ entry }: { entry: { type: "wfo" | "wfh" | "leave" | "od" | "holiday" | "weekend"; hours?: number | null; loginTs?: number; wfhHours?: number } }) {
   const isWFH = entry.type === "wfh";
   const label = isWFH
     ? "Work from home logged"
@@ -352,29 +483,36 @@ function HeroTile({
   allowance,
   used,
   onOpen,
+  type,
 }: {
   left: number;
   allowance: number;
   used: number;
   onOpen: () => void;
+  type: "wfh" | "wfo";
 }) {
+  const isWFO = type === "wfo";
+  const title = isWFO ? "WFO days" : "WFH days left";
+  const bgColor = isWFO ? "bg-brand-blue" : "bg-brand-blue";
+  const iconBg = isWFO ? "bg-lavender" : "bg-brand-lime";
+
   return (
     <button
       onClick={onOpen}
-      className="relative block w-full overflow-hidden rounded-xl bg-brand-blue p-5 text-left text-white shadow-md shadow-brand-blue/20 tap tap-press"
+      className={`relative block w-full overflow-hidden rounded-xl ${bgColor} p-4 text-left text-white shadow-md shadow-brand-blue/20 tap tap-press`}
     >
       <div className="relative">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold opacity-90">WFH days left</span>
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-lime text-ink">
-            <ArrowUpRight className="h-4 w-4" strokeWidth={2.5} />
+          <span className="text-[10px] font-semibold opacity-90">{title}</span>
+          <span className={`grid h-6 w-6 place-items-center rounded-full ${iconBg} text-ink`}>
+            {isWFO ? <Briefcase className="h-3 w-3" strokeWidth={2.5} /> : <HomeIcon className="h-3 w-3" strokeWidth={2.5} />}
           </span>
         </div>
-        <div className="mt-2 text-6xl font-extrabold tracking-tight tabular-nums leading-none">
-          {left}
+        <div className="mt-1 text-3xl font-extrabold tracking-tight tabular-nums leading-none">
+          {isWFO ? `${used}/${allowance}` : left}
         </div>
-        <div className="mt-2 text-xs font-medium opacity-90">
-          of {allowance} allowed · {used} used
+        <div className="mt-1.5 text-[10px] font-medium opacity-90">
+          {isWFO ? `${Math.max(0, left)} more required` : `${used} of ${allowance} used`}
         </div>
       </div>
     </button>

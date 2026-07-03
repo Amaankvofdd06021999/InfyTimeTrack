@@ -3,6 +3,9 @@ export const FULL_DAY_HOURS = 6;
 export const FULL_DAY_MS = FULL_DAY_HOURS * 3600 * 1000;
 export const HALF_DAY_MS = 4 * 3600 * 1000;
 export const MAX_SESSION_MS = 24 * 3600 * 1000;
+export const REQUIRED_OFFICE_HOURS = 9.5; // Required hours in office (9.5 hours)
+export const REQUIRED_OFFICE_MS = REQUIRED_OFFICE_HOURS * 3600 * 1000;
+export const OFFICE_CUTOFF_TIME = "20:30"; // 8:30 PM cutoff
 
 export function pad(n: number) {
   return n < 10 ? `0${n}` : `${n}`;
@@ -103,6 +106,87 @@ export interface Badge {
   label: string;
   hint: string;
   earned: boolean;
+}
+
+// Calculate WFH hours needed for an incomplete office day
+export function calculateWFHNeeded(loginTime: Date, logoutTime: Date): {
+  wfhHoursNeeded: number;
+  suggestedWFHStart: string;
+  suggestedWFHEnd: string;
+  canCompleteInOffice: boolean;
+} {
+  const officeHours = (logoutTime.getTime() - loginTime.getTime()) / (3600 * 1000);
+
+  // Check if they can still complete 9.5 hours before 8:30 PM
+  const cutoffTime = new Date(logoutTime);
+  cutoffTime.setHours(20, 30, 0, 0);
+  const remainingTimeBeforeCutoff = (cutoffTime.getTime() - logoutTime.getTime()) / (3600 * 1000);
+  const hoursNeeded = Math.max(0, REQUIRED_OFFICE_HOURS - officeHours);
+
+  const canCompleteInOffice = remainingTimeBeforeCutoff >= hoursNeeded;
+
+  // Calculate suggested WFH time (preferably before office login)
+  const suggestedStart = new Date(loginTime);
+  suggestedStart.setHours(8, 30, 0, 0); // Start at 8:30 AM
+
+  const suggestedEnd = new Date(suggestedStart);
+  suggestedEnd.setTime(suggestedEnd.getTime() + hoursNeeded * 3600 * 1000);
+
+  // If end time goes beyond login time, adjust
+  if (suggestedEnd > loginTime) {
+    // Suggest evening WFH instead
+    const eveningStart = new Date(logoutTime);
+    eveningStart.setMinutes(eveningStart.getMinutes() + 30); // 30 min break after office
+    const eveningEnd = new Date(eveningStart);
+    eveningEnd.setTime(eveningEnd.getTime() + hoursNeeded * 3600 * 1000);
+
+    return {
+      wfhHoursNeeded: hoursNeeded,
+      suggestedWFHStart: formatTime(eveningStart.getTime()),
+      suggestedWFHEnd: formatTime(eveningEnd.getTime()),
+      canCompleteInOffice,
+    };
+  }
+
+  return {
+    wfhHoursNeeded: hoursNeeded,
+    suggestedWFHStart: formatTime(suggestedStart.getTime()),
+    suggestedWFHEnd: formatTime(suggestedEnd.getTime()),
+    canCompleteInOffice,
+  };
+}
+
+// Get working days and weekends in a month
+export function getMonthStatistics(year: number, month: number): {
+  totalDays: number;
+  weekdays: number;
+  weekends: number;
+  holidays: number;
+} {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const totalDays = lastDay.getDate();
+
+  let weekdays = 0;
+  let weekends = 0;
+
+  for (let day = 1; day <= totalDays; day++) {
+    const date = new Date(year, month, day);
+    const dayOfWeek = date.getDay();
+
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      weekends++;
+    } else {
+      weekdays++;
+    }
+  }
+
+  return {
+    totalDays,
+    weekdays,
+    weekends,
+    holidays: 0, // Can be enhanced with holiday API
+  };
 }
 
 export function computeBadges(stats: {
