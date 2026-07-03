@@ -8,6 +8,7 @@ import { CalendarView } from "@/components/officeflow/CalendarView";
 import { LogView } from "@/components/officeflow/LogView";
 import { SettingsView } from "@/components/officeflow/SettingsView";
 import { Onboarding } from "@/components/officeflow/Onboarding";
+import { TransportReminder } from "@/components/officeflow/TransportReminder";
 import type { View } from "@/components/officeflow/types";
 
 export const Route = createFileRoute("/")({
@@ -33,6 +34,7 @@ function Shell() {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <TransportReminder />
       <BannerHost />
       <main className="mx-auto w-full max-w-[420px] px-5">
         {view === "dashboard" && <Dashboard onNavigate={setView} />}

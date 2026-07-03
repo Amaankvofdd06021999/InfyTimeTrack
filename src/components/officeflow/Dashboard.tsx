@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowUpRight, Bell, Clock3, Flame, Home as HomeIcon, Building2, ChevronLeft, AlertCircle, Briefcase, Calendar, Edit3, Bus, FileText } from "lucide-react";
+import { WFHSuggestionModal } from "./WFHSuggestionModal";
+import { LeaveApprovalSystem } from "./LeaveApprovalSystem";
 import { useStore } from "@/lib/officeflow/store";
 import { gamification, monthStats, todayEntry } from "@/lib/officeflow/selectors";
 import {
@@ -32,8 +34,10 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
   const currentDate = new Date();
   const monthlyStats = useMemo(() => getMonthStatistics(currentDate.getFullYear(), currentDate.getMonth()), [currentDate]);
 
-  // Calculate WFO progress
-  const wfoRequired = state.wfoRequiredDays || 9;
+  // Auto-calculate WFO requirements: Workdays - WFH allowance = WFO required
+  const wfoRequired = useMemo(() => {
+    return Math.max(0, monthlyStats.weekdays - state.allowance);
+  }, [monthlyStats.weekdays, state.allowance]);
   const wfoCompleted = stats.wfoFullCount + stats.wfoPartialCount;
 
   const [step, setStep] = useState<DailyStep>("choose");
@@ -41,6 +45,15 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
     const d = new Date();
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
+
+  // State for modals
+  const [showWFHModal, setShowWFHModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [sessionData, setSessionData] = useState<{
+    loginTs: number;
+    logoutTs: number;
+    hours: number;
+  } | null>(null);
 
   const markWFH = () => {
     markDay(todayKey(), { type: "wfh" });
@@ -64,11 +77,13 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
       {/* Daily decision / timer / today-logged / EOD prompt */}
       {hasSession ? (
         <TimerCard onLogout={() => {
-          const res = stopTimer();
-          if (res) {
-            if (res.full) emitAlert("Full office day logged", `${formatHours(res.hours)} recorded.`, "success");
-            else emitAlert("Partial office day logged", `${formatHours(res.hours)} recorded.`, "warning");
-          }
+          const loginTs = state.session!.loginTs;
+          const logoutTs = Date.now();
+          const hours = (logoutTs - loginTs) / (3600 * 1000);
+
+          // Store session data and show WFH suggestion modal
+          setSessionData({ loginTs, logoutTs, hours });
+          setShowWFHModal(true);
         }} />
       ) : today ? (
         <TodayLoggedCard entry={today} />
@@ -174,7 +189,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
         <h2 className="text-base font-bold">Quick Actions</h2>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <button
-            onClick={() => emitAlert("Leave Management", "Feature coming soon", "default")}
+            onClick={() => setShowLeaveModal(true)}
             className="flex items-center gap-3 rounded-lg bg-canvas p-3 text-left tap tap-press"
           >
             <div className="rounded-full bg-brand-lime p-2">
@@ -250,6 +265,53 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
           ))}
         </div>
       </section>
+
+      {/* WFH Suggestion Modal */}
+      {showWFHModal && sessionData && (
+        <WFHSuggestionModal
+          loginTime={sessionData.loginTs}
+          logoutTime={sessionData.logoutTs}
+          actualHours={sessionData.hours}
+          onClose={() => {
+            // Log out and save the day
+            const res = stopTimer();
+            if (res) {
+              if (res.full) emitAlert("Office day logged", `${formatHours(res.hours)} recorded.`, "success");
+              else emitAlert("Office hours logged", `${formatHours(res.hours)} recorded. Consider applying WFH hours.`, "warning");
+            }
+            setShowWFHModal(false);
+            setSessionData(null);
+          }}
+          onApplyWFH={(wfhHours, startTime, endTime) => {
+            // Save the WFO entry with WFH hours
+            const res = stopTimer();
+            if (res) {
+              const dayKey = state.session!.date;
+              markDay(dayKey, {
+                type: "wfo",
+                hours: res.hours,
+                loginTs: sessionData.loginTs,
+                logoutTs: sessionData.logoutTs,
+                wfhHours: wfhHours,
+                wfhStartTime: startTime,
+                wfhEndTime: endTime
+              });
+              emitAlert(
+                "Day Complete!",
+                `Office: ${res.hours.toFixed(1)}h + WFH: ${wfhHours.toFixed(1)}h = ${(res.hours + wfhHours).toFixed(1)}h total`,
+                "success"
+              );
+            }
+          }}
+        />
+      )}
+
+      {/* Leave Approval System Modal */}
+      {showLeaveModal && (
+        <LeaveApprovalSystem
+          onClose={() => setShowLeaveModal(false)}
+        />
+      )}
     </div>
   );
 }

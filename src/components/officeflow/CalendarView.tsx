@@ -64,20 +64,34 @@ export function CalendarView() {
             const isSelected = selected === k;
 
             let pillClass = "bg-transparent text-ink";
-            if (entry?.type === "wfh") pillClass = "bg-brand-lime text-ink";
-            else if (entry?.type === "wfo") {
+            if (entry?.type === "wfh") {
+              pillClass = "bg-brand-lime text-ink";
+            } else if (entry?.type === "wfo") {
               if (entry.hours != null && entry.hours < FULL_DAY_HOURS) pillClass = "bg-lavender text-ink";
               else pillClass = "bg-brand-blue text-white";
+            } else if (entry?.type === "leave") {
+              pillClass = "bg-green-500 text-white"; // Approved leave - green
+            } else if (entry?.type === "pending_leave") {
+              pillClass = "bg-yellow-500 text-white"; // Pending leave - yellow
+            } else if (entry?.type === "od") {
+              pillClass = "bg-purple-500 text-white"; // Approved OD - purple
+            } else if (entry?.type === "pending_od") {
+              pillClass = "bg-yellow-500 text-white"; // Pending OD - yellow
+            } else if (entry?.type === "planned_wfh") {
+              pillClass = "bg-yellow-300 text-ink"; // Planned WFH - light yellow
+            } else if (entry?.type === "holiday") {
+              pillClass = "bg-red-500 text-white"; // Holiday - red
+            } else if (entry?.type === "weekend") {
+              pillClass = "bg-gray-300 text-ink"; // Weekend - gray
             }
 
             return (
               <button
                 key={k}
-                disabled={future}
                 onClick={() => setSelected(isSelected ? null : k)}
                 className={`aspect-square rounded-full text-[13px] font-bold tap tap-press ${pillClass} ${
                   inMonth ? "" : "opacity-30"
-                } ${future ? "opacity-20" : ""} ${isToday ? "ring-2 ring-ink ring-offset-2 ring-offset-white" : ""} ${
+                } ${future && !entry ? "opacity-50" : ""} ${isToday ? "ring-2 ring-ink ring-offset-2 ring-offset-white" : ""} ${
                   isSelected ? "outline outline-2 outline-ink" : ""
                 }`}
               >
@@ -88,11 +102,13 @@ export function CalendarView() {
         </div>
 
         {/* Legend */}
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-ink-muted">
-          <LegendDot color="bg-brand-blue" label="Office full" />
-          <LegendDot color="bg-lavender" label="Office partial" />
+        <div className="mt-4 flex flex-wrap gap-x-3 gap-y-2 text-[10px] text-ink-muted">
+          <LegendDot color="bg-brand-blue" label="Office" />
           <LegendDot color="bg-brand-lime" label="WFH" />
-          <LegendDot color="bg-white ring-1 ring-ink/20" label="Unmarked" />
+          <LegendDot color="bg-green-500" label="Leave" />
+          <LegendDot color="bg-purple-500" label="OD" />
+          <LegendDot color="bg-yellow-500" label="Pending" />
+          <LegendDot color="bg-yellow-300" label="Planned" />
         </div>
       </section>
 
@@ -107,13 +123,22 @@ export function CalendarView() {
             })}
           </div>
           <div className="mt-1 text-lg font-extrabold">
-            {selectedEntry
-              ? selectedEntry.type === "wfh"
-                ? "Work from home"
-                : selectedEntry.hours != null && selectedEntry.hours < FULL_DAY_HOURS
+            {selectedEntry ? (
+              selectedEntry.type === "wfh" ? "Work from home" :
+              selectedEntry.type === "wfo" ? (
+                selectedEntry.hours != null && selectedEntry.hours < FULL_DAY_HOURS
                   ? `Office · ${selectedEntry.hours.toFixed(2)}h partial`
                   : "Office · full day"
-              : "Not marked"}
+              ) :
+              selectedEntry.type === "leave" ? `Leave · ${selectedEntry.leaveType || "Approved"}` :
+              selectedEntry.type === "pending_leave" ? `Leave · Pending Approval` :
+              selectedEntry.type === "od" ? `On Duty · ${selectedEntry.odPurpose || "Approved"}` :
+              selectedEntry.type === "pending_od" ? `On Duty · Pending Approval` :
+              selectedEntry.type === "planned_wfh" ? "Planned WFH · Pending" :
+              selectedEntry.type === "holiday" ? "Holiday" :
+              selectedEntry.type === "weekend" ? "Weekend" :
+              "Not marked"
+            ) : "Not marked"}
           </div>
 
           {selectedEntry?.loginTs && (
@@ -126,21 +151,38 @@ export function CalendarView() {
           {!showTimeEntry ? (
             <>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setShowTimeEntry(true)}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-brand-blue px-3 py-3 text-sm font-bold text-white tap tap-press"
-                >
-                  <Building2 className="h-4 w-4" /> Office
-                </button>
-                <button
-                  onClick={() => {
-                    markDay(selected, { type: "wfh" });
-                    emitAlert("Marked as work from home");
-                  }}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-brand-lime px-3 py-3 text-sm font-bold text-ink tap tap-press"
-                >
-                  <HomeIcon className="h-4 w-4" /> WFH
-                </button>
+                {/* For future dates, show Plan WFH option */}
+                {isFuture(selected) ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        markDay(selected, { type: "planned_wfh" });
+                        emitAlert("WFH planned for this day", "You can change this to office on the actual day", "success");
+                      }}
+                      className="flex items-center justify-center gap-2 rounded-lg bg-yellow-300 px-3 py-3 text-sm font-bold text-ink tap tap-press col-span-2"
+                    >
+                      <HomeIcon className="h-4 w-4" /> Plan WFH
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setShowTimeEntry(true)}
+                      className="flex items-center justify-center gap-2 rounded-lg bg-brand-blue px-3 py-3 text-sm font-bold text-white tap tap-press"
+                    >
+                      <Building2 className="h-4 w-4" /> Office
+                    </button>
+                    <button
+                      onClick={() => {
+                        markDay(selected, { type: "wfh" });
+                        emitAlert("Marked as work from home");
+                      }}
+                      className="flex items-center justify-center gap-2 rounded-lg bg-brand-lime px-3 py-3 text-sm font-bold text-ink tap tap-press"
+                    >
+                      <HomeIcon className="h-4 w-4" /> WFH
+                    </button>
+                  </>
+                )}
               </div>
               {selectedEntry ? (
                 <button

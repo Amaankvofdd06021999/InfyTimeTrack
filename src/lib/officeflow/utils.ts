@@ -114,45 +114,115 @@ export function calculateWFHNeeded(loginTime: Date, logoutTime: Date): {
   suggestedWFHStart: string;
   suggestedWFHEnd: string;
   canCompleteInOffice: boolean;
+  suggestionType: 'morning' | 'evening' | 'both' | 'split';
+  totalPossibleHours: number;
 } {
   const officeHours = (logoutTime.getTime() - loginTime.getTime()) / (3600 * 1000);
-
-  // Check if they can still complete 9.5 hours before 8:30 PM
-  const cutoffTime = new Date(logoutTime);
-  cutoffTime.setHours(20, 30, 0, 0);
-  const remainingTimeBeforeCutoff = (cutoffTime.getTime() - logoutTime.getTime()) / (3600 * 1000);
   const hoursNeeded = Math.max(0, REQUIRED_OFFICE_HOURS - officeHours);
 
-  const canCompleteInOffice = remainingTimeBeforeCutoff >= hoursNeeded;
-
-  // Calculate suggested WFH time (preferably before office login)
-  const suggestedStart = new Date(loginTime);
-  suggestedStart.setHours(8, 30, 0, 0); // Start at 8:30 AM
-
-  const suggestedEnd = new Date(suggestedStart);
-  suggestedEnd.setTime(suggestedEnd.getTime() + hoursNeeded * 3600 * 1000);
-
-  // If end time goes beyond login time, adjust
-  if (suggestedEnd > loginTime) {
-    // Suggest evening WFH instead
-    const eveningStart = new Date(logoutTime);
-    eveningStart.setMinutes(eveningStart.getMinutes() + 30); // 30 min break after office
-    const eveningEnd = new Date(eveningStart);
-    eveningEnd.setTime(eveningEnd.getTime() + hoursNeeded * 3600 * 1000);
-
+  if (hoursNeeded === 0) {
     return {
-      wfhHoursNeeded: hoursNeeded,
-      suggestedWFHStart: formatTime(eveningStart.getTime()),
-      suggestedWFHEnd: formatTime(eveningEnd.getTime()),
-      canCompleteInOffice,
+      wfhHoursNeeded: 0,
+      suggestedWFHStart: '',
+      suggestedWFHEnd: '',
+      canCompleteInOffice: true,
+      suggestionType: 'both',
+      totalPossibleHours: officeHours
     };
   }
 
+  // Set work day boundaries (8:30 AM to 8:30 PM)
+  const dayStart = new Date(loginTime);
+  dayStart.setHours(8, 30, 0, 0);
+
+  const dayEnd = new Date(logoutTime);
+  dayEnd.setHours(20, 30, 0, 0);
+
+  // Calculate available WFH slots
+  const morningAvailable = Math.max(0, (loginTime.getTime() - dayStart.getTime()) / (3600 * 1000));
+  const eveningAvailable = Math.max(0, (dayEnd.getTime() - logoutTime.getTime()) / (3600 * 1000));
+  const totalAvailable = morningAvailable + eveningAvailable;
+
+  // Total possible hours including office
+  const totalPossibleHours = officeHours + totalAvailable;
+
+  // Check if 9.5 hours is even possible
+  const canCompleteInOffice = totalPossibleHours >= REQUIRED_OFFICE_HOURS;
+
+  let suggestedStart: Date;
+  let suggestedEnd: Date;
+  let suggestionType: 'morning' | 'evening' | 'both' | 'split';
+  let actualWFHHours = hoursNeeded;
+
+  // If we can't reach 9.5 hours even with all available time
+  if (!canCompleteInOffice) {
+    // Use all available time
+    actualWFHHours = totalAvailable;
+
+    if (morningAvailable > 0 && eveningAvailable > 0) {
+      // Need both morning and evening
+      suggestionType = 'split';
+      suggestedStart = dayStart;
+      suggestedEnd = dayEnd;
+    } else if (morningAvailable > 0) {
+      suggestionType = 'morning';
+      suggestedStart = dayStart;
+      suggestedEnd = loginTime;
+    } else {
+      suggestionType = 'evening';
+      suggestedStart = logoutTime;
+      suggestedEnd = dayEnd;
+    }
+  }
+  // If morning slot alone can cover the needed hours
+  else if (morningAvailable >= hoursNeeded) {
+    suggestionType = 'morning';
+    // For very short office hours, prefer suggesting from 8:30 AM
+    if (loginTime.getHours() >= 10 || officeHours < 2) {
+      suggestedStart = new Date(loginTime.getTime() - hoursNeeded * 3600 * 1000);
+      if (suggestedStart < dayStart) {
+        suggestedStart = dayStart;
+      }
+      suggestedEnd = loginTime;
+    } else {
+      suggestedStart = dayStart;
+      suggestedEnd = new Date(dayStart.getTime() + hoursNeeded * 3600 * 1000);
+    }
+  }
+  // If evening slot alone can cover the needed hours
+  else if (eveningAvailable >= hoursNeeded) {
+    suggestionType = 'evening';
+    suggestedStart = logoutTime;
+    suggestedEnd = new Date(logoutTime.getTime() + hoursNeeded * 3600 * 1000);
+    if (suggestedEnd > dayEnd) {
+      suggestedEnd = dayEnd;
+    }
+  }
+  // Need to split between morning and evening
+  else {
+    suggestionType = 'split';
+    // Use format like "8:30-11:41 + 12:00-20:30"
+    suggestedStart = dayStart;
+    suggestedEnd = dayEnd;
+    actualWFHHours = totalAvailable;
+  }
+
+  // Format the suggestion for split time
+  let formattedStart = formatTime(suggestedStart.getTime());
+  let formattedEnd = formatTime(suggestedEnd.getTime());
+
+  if (suggestionType === 'split') {
+    formattedStart = `${formatTime(dayStart.getTime())}-${formatTime(loginTime.getTime())}`;
+    formattedEnd = `${formatTime(logoutTime.getTime())}-${formatTime(dayEnd.getTime())}`;
+  }
+
   return {
-    wfhHoursNeeded: hoursNeeded,
-    suggestedWFHStart: formatTime(suggestedStart.getTime()),
-    suggestedWFHEnd: formatTime(suggestedEnd.getTime()),
+    wfhHoursNeeded: actualWFHHours,
+    suggestedWFHStart: formattedStart,
+    suggestedWFHEnd: formattedEnd,
     canCompleteInOffice,
+    suggestionType,
+    totalPossibleHours
   };
 }
 
@@ -162,6 +232,7 @@ export function getMonthStatistics(year: number, month: number): {
   weekdays: number;
   weekends: number;
   holidays: number;
+  wfoRequired: number; // Auto-calculated WFO days
 } {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -181,12 +252,25 @@ export function getMonthStatistics(year: number, month: number): {
     }
   }
 
+  // Auto-calculate WFO required days
+  // Total workdays - WFH allowance = WFO required
+  // Assuming default 8 WFH days per month
+  const wfoRequired = Math.max(0, weekdays - 8); // This will be dynamic based on state.allowance
+
   return {
     totalDays,
     weekdays,
     weekends,
     holidays: 0, // Can be enhanced with holiday API
+    wfoRequired,
   };
+}
+
+// Calculate WFO requirements for a month
+export function calculateWFORequirement(year: number, month: number, wfhAllowance: number): number {
+  const stats = getMonthStatistics(year, month);
+  // Work days in month - WFH allowance = WFO required
+  return Math.max(0, stats.weekdays - wfhAllowance);
 }
 
 export function computeBadges(stats: {

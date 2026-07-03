@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { Bell, Check, Minus, Plus, Trash2, Database, User, Download } from "lucide-react";
+import { Bell, Check, Minus, Plus, Trash2, Database, User, Download, Calendar, Briefcase } from "lucide-react";
 import { useStore } from "@/lib/officeflow/store";
 
 export function SettingsView() {
-  const { state, setAllowance, notifyPermission, requestNotifications, emitAlert, clearAllData, setLocalDataEnabled, setNotificationsEnabled, setUserName } = useStore();
+  const { state, setAllowance, notifyPermission, requestNotifications, emitAlert, clearAllData, setLocalDataEnabled, setNotificationsEnabled, setUserName, markDay } = useStore();
   const [draft, setDraft] = useState(state.allowance);
   const [nameInput, setNameInput] = useState(state.userName || "");
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [quarterlyLeaves, setQuarterlyLeaves] = useState(5);
 
   useEffect(() => {
     // Check if app is installed
@@ -114,6 +115,92 @@ export function SettingsView() {
         >
           <Check className="h-4 w-4" /> Save allowance
         </button>
+      </section>
+
+      {/* Work Days Information */}
+      <section className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-lavender">
+            <Briefcase className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-base font-bold">Monthly Work Distribution</div>
+            <div className="text-xs text-ink-muted mb-3">
+              Auto-calculated based on current month
+            </div>
+            {(() => {
+              const now = new Date();
+              const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+              let workdays = 0;
+              let weekends = 0;
+              for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(now.getFullYear(), now.getMonth(), day);
+                const dayOfWeek = date.getDay();
+                if (dayOfWeek === 0 || dayOfWeek === 6) weekends++;
+                else workdays++;
+              }
+              const wfoRequired = Math.max(0, workdays - draft);
+
+              return (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-canvas p-3">
+                    <div className="text-[10px] font-semibold text-ink-muted">Workdays</div>
+                    <div className="text-lg font-bold">{workdays}</div>
+                  </div>
+                  <div className="rounded-lg bg-canvas p-3">
+                    <div className="text-[10px] font-semibold text-ink-muted">Weekends</div>
+                    <div className="text-lg font-bold">{weekends}</div>
+                  </div>
+                  <div className="col-span-2 rounded-lg bg-brand-blue/10 p-3">
+                    <div className="text-xs font-semibold text-brand-blue">WFO Days Required</div>
+                    <div className="text-xl font-bold text-brand-blue">
+                      {wfoRequired} days
+                    </div>
+                    <div className="text-[10px] text-ink-muted mt-1">
+                      = {workdays} workdays - {draft} WFH allowance
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </section>
+
+      {/* Leave Quota */}
+      <section className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-lime">
+            <Calendar className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-base font-bold">Quarterly Leave Quota</div>
+            <div className="text-xs text-ink-muted mb-3">
+              Leaves allowed per quarter (3 months)
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-canvas p-3">
+                <div className="text-[10px] font-semibold text-ink-muted">Current Quarter</div>
+                <div className="mt-1 text-lg font-bold">Q{Math.floor(new Date().getMonth() / 3) + 1} {new Date().getFullYear()}</div>
+              </div>
+              <div className="rounded-lg bg-canvas p-3">
+                <div className="text-[10px] font-semibold text-ink-muted">Leaves/Quarter</div>
+                <div className="mt-1 flex items-center gap-2">
+                  <button onClick={() => setQuarterlyLeaves(Math.max(0, quarterlyLeaves - 1))}>
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="text-lg font-bold">{quarterlyLeaves}</span>
+                  <button onClick={() => setQuarterlyLeaves(Math.min(10, quarterlyLeaves + 1))}>
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 text-[11px] text-ink-muted">
+              💡 Tip: Unused leaves typically don't carry forward
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-xl bg-white p-5 shadow-sm border-2 border-brand-blue">

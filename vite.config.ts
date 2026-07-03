@@ -12,4 +12,15 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    resolve: {
+      alias: {
+        // Fix for use-sync-external-store module resolution
+        'use-sync-external-store/shim/with-selector': 'use-sync-external-store/with-selector.js'
+      }
+    },
+    optimizeDeps: {
+      include: ['use-sync-external-store', 'use-sync-external-store/with-selector.js']
+    }
+  }
 });

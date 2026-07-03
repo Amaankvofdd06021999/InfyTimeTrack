@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { dateKey, MAX_SESSION_MS, todayKey } from "./utils";
 import { playNotificationSound, playAlarmSound } from "./sound";
 
-export type DayType = "wfo" | "wfh" | "leave" | "od" | "holiday" | "weekend";
+export type DayType = "wfo" | "wfh" | "leave" | "od" | "holiday" | "weekend" | "planned_wfh" | "pending_leave" | "pending_od";
+export type ApprovalStatus = "pending" | "approved" | "rejected";
+
 export interface DayEntry {
   type: DayType;
   hours?: number | null; // WFO: number of hours, or null = manual full day. WFH: undefined.
@@ -16,6 +18,11 @@ export interface DayEntry {
   busTime?: string; // Bus time (HH:MM format)
   leaveType?: "casual" | "sick" | "earned" | "comp_off"; // Type of leave
   odPurpose?: string; // Purpose of OD
+  approvalStatus?: ApprovalStatus; // Approval status for leaves/OD/planned WFH
+  appliedDate?: number; // Timestamp when leave/OD was applied
+  approvedDate?: number; // Timestamp when leave/OD was approved
+  approvedBy?: string; // Manager who approved
+  comments?: string; // Comments for leave/OD application
 }
 export interface Session {
   date: string;

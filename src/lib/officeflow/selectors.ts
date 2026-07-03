@@ -25,8 +25,11 @@ export function monthStats(state: State, view: Date): MonthStats {
   let wfoPartialCount = 0;
   let officeHours = 0;
   for (const { entry } of entries) {
-    if (entry.type === "wfh") wfhCount++;
-    else {
+    if (entry.type === "wfh" || entry.type === "planned_wfh") {
+      // Count both actual WFH and planned WFH as WFH days
+      wfhCount++;
+    } else if (entry.type === "wfo") {
+      // Only count actual WFO days, not leaves, OD, holidays, weekends, or pending applications
       const h = entry.hours;
       if (h == null || h >= FULL_DAY_HOURS) {
         wfoFullCount++;
@@ -36,6 +39,7 @@ export function monthStats(state: State, view: Date): MonthStats {
         officeHours += h;
       }
     }
+    // Skip counting for: leave, od, holiday, weekend, pending_leave, pending_od
   }
   return {
     wfhCount,
