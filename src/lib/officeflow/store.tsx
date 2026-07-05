@@ -129,6 +129,7 @@ interface Ctx {
   setNotificationsEnabled: (enabled: boolean) => void;
   setOnboarded: (onboarded: boolean) => void;
   clearAllData: () => void;
+  updateTransportPreferences: (prefs: State["transportPreferences"]) => void;
 }
 
 const StoreContext = createContext<Ctx | null>(null);
@@ -165,11 +166,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const pushBanner = useCallback((b: Omit<Banner, "id">) => {
-    const id = bannerId.current++;
-    setBanners((prev) => [...prev, { id, ...b }]);
-    window.setTimeout(() => {
-      setBanners((prev) => prev.filter((x) => x.id !== id));
-    }, 8000);
+    setBanners((prev) => {
+      // Check if a banner with the same title already exists
+      const existingBanner = prev.find(banner => banner.title === b.title);
+
+      if (existingBanner) {
+        // Banner already exists - make it blink/pulse by removing and re-adding
+        const filtered = prev.filter(banner => banner.id !== existingBanner.id);
+        const id = bannerId.current++;
+
+        // Brief delay to create a visual pulse effect
+        setTimeout(() => {
+          setBanners(current => [...current, { id, ...b }]);
+          window.setTimeout(() => {
+            setBanners((current) => current.filter((x) => x.id !== id));
+          }, 8000);
+        }, 100);
+
+        return filtered;
+      } else {
+        // New banner - add normally
+        const id = bannerId.current++;
+        window.setTimeout(() => {
+          setBanners((current) => current.filter((x) => x.id !== id));
+        }, 8000);
+        return [...prev, { id, ...b }];
+      }
+    });
   }, []);
 
   const dismissBanner = useCallback((id: number) => {
@@ -292,6 +315,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     emitAlert("Data cleared", "All tracking data has been deleted.", "success");
   }, [state.userName, state.isOnboarded, emitAlert]);
 
+  const updateTransportPreferences = useCallback((prefs: State["transportPreferences"]) => {
+    setState((s) => ({ ...s, transportPreferences: prefs }));
+  }, []);
+
   // ---------------- Milestone + EOD watchers ----------------
   useEffect(() => {
     if (!hydrated) return;
@@ -349,8 +376,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setNotificationsEnabled,
       setOnboarded,
       clearAllData,
+      updateTransportPreferences,
     }),
-    [state, setAllowance, markDay, clearDay, startTimer, stopTimer, markSessionFlag, now, banners, pushBanner, dismissBanner, notifyPermission, requestNotifications, emitAlert, setUserName, setLocalDataEnabled, setNotificationsEnabled, setOnboarded, clearAllData],
+    [state, setAllowance, markDay, clearDay, startTimer, stopTimer, markSessionFlag, now, banners, pushBanner, dismissBanner, notifyPermission, requestNotifications, emitAlert, setUserName, setLocalDataEnabled, setNotificationsEnabled, setOnboarded, clearAllData, updateTransportPreferences],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

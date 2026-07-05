@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Bus, Car, Bell, Clock } from "lucide-react";
 import { useStore } from "@/lib/officeflow/store";
 import { pad } from "@/lib/officeflow/utils";
 
 export function TransportReminders() {
-  const { state, emitAlert } = useStore();
+  const { state, emitAlert, updateTransportPreferences } = useStore();
   const [cabTime, setCabTime] = useState(state.transportPreferences?.defaultCabTime || "08:30");
   const [busTime, setBusTime] = useState(state.transportPreferences?.defaultBusTime || "08:00");
   const [reminderMinutes, setReminderMinutes] = useState(state.transportPreferences?.reminderMinutesBefore || 30);
-  const [remindersEnabled, setRemindersEnabled] = useState(true);
+  const [remindersEnabled, setRemindersEnabled] = useState(state.notificationsEnabled ?? true);
+  const lastReminderCab = useRef<string | null>(null);
+  const lastReminderBus = useRef<string | null>(null);
 
   // Check for transport reminders
   useEffect(() => {
@@ -17,12 +19,16 @@ export function TransportReminders() {
     const checkReminders = () => {
       const now = new Date();
       const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      const todayDate = now.toDateString();
 
       // Calculate reminder times
       const cabReminderTime = calculateReminderTime(cabTime, reminderMinutes);
       const busReminderTime = calculateReminderTime(busTime, reminderMinutes);
 
-      if (currentTime === cabReminderTime) {
+      // Check cab reminder - only show once per day
+      const cabReminderKey = `${todayDate}-cab-${cabReminderTime}`;
+      if (currentTime === cabReminderTime && lastReminderCab.current !== cabReminderKey) {
+        lastReminderCab.current = cabReminderKey;
         emitAlert(
           "Cab Booking Reminder",
           `Time to book your cab for ${cabTime}`,
@@ -30,7 +36,10 @@ export function TransportReminders() {
         );
       }
 
-      if (currentTime === busReminderTime) {
+      // Check bus reminder - only show once per day
+      const busReminderKey = `${todayDate}-bus-${busReminderTime}`;
+      if (currentTime === busReminderTime && lastReminderBus.current !== busReminderKey) {
+        lastReminderBus.current = busReminderKey;
         emitAlert(
           "Bus Reminder",
           `Your bus is scheduled at ${busTime}`,
@@ -54,7 +63,11 @@ export function TransportReminders() {
   };
 
   const savePreferences = () => {
-    // This would save to state in a real implementation
+    updateTransportPreferences({
+      defaultCabTime: cabTime,
+      defaultBusTime: busTime,
+      reminderMinutesBefore: reminderMinutes,
+    });
     emitAlert("Preferences Saved", "Transport reminder settings updated", "success");
   };
 

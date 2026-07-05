@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Building2, Home as HomeIcon, Trash2, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Building2, Home as HomeIcon, Trash2, Clock, Calendar, Briefcase } from "lucide-react";
 import { useStore } from "@/lib/officeflow/store";
 import { monthStats } from "@/lib/officeflow/selectors";
 import { dateKey, FULL_DAY_HOURS, isFuture, monthGrid, monthLabel, todayKey, formatTime } from "@/lib/officeflow/utils";
@@ -148,6 +148,12 @@ export function CalendarView() {
             </div>
           )}
 
+          {selectedEntry?.wfhHours && (
+            <div className="mt-2 text-xs text-ink-muted">
+              WFH Hours: {selectedEntry.wfhHours.toFixed(1)}h (applied for remaining day)
+            </div>
+          )}
+
           {!showTimeEntry ? (
             <>
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -174,8 +180,31 @@ export function CalendarView() {
                     </button>
                     <button
                       onClick={() => {
-                        markDay(selected, { type: "wfh" });
-                        emitAlert("Marked as work from home");
+                        // Check if there are already office hours logged for this day
+                        if (selectedEntry && selectedEntry.type === "wfo" && selectedEntry.hours) {
+                          // Calculate remaining hours for WFH
+                          const standardFullDay = 9; // Standard full day hours
+                          const remainingHours = Math.max(0, standardFullDay - selectedEntry.hours);
+
+                          if (remainingHours > 0) {
+                            // Confirm with user before applying WFH for remaining hours
+                            const confirmMsg = `You logged ${selectedEntry.hours.toFixed(1)}h in office. Apply remaining ${remainingHours.toFixed(1)}h as WFH?`;
+                            if (window.confirm(confirmMsg)) {
+                              // Update the entry to include both office and WFH hours
+                              markDay(selected, {
+                                ...selectedEntry,
+                                wfhHours: remainingHours,
+                              });
+                              emitAlert("WFH applied for remaining hours", `${remainingHours.toFixed(1)}h WFH added to your ${selectedEntry.hours.toFixed(1)}h office day`, "success");
+                            }
+                          } else {
+                            emitAlert("Full day already logged", "You've already logged enough office hours for a full day", "warning");
+                          }
+                        } else {
+                          // No office hours yet, mark as full WFH day
+                          markDay(selected, { type: "wfh" });
+                          emitAlert("Marked as work from home");
+                        }
                       }}
                       className="flex items-center justify-center gap-2 rounded-lg bg-brand-lime px-3 py-3 text-sm font-bold text-ink tap tap-press"
                     >
@@ -184,6 +213,52 @@ export function CalendarView() {
                   </>
                 )}
               </div>
+
+              {/* Additional buttons for Leave and OD */}
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    // Mark as leave
+                    markDay(selected, {
+                      type: "pending_leave",
+                      leaveType: "casual",
+                      approvalStatus: "pending",
+                      appliedDate: Date.now(),
+                      comments: "Applied from calendar"
+                    });
+                    emitAlert("Leave applied", "Pending approval from manager", "success");
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-3 py-2.5 text-sm font-bold text-white tap tap-press"
+                >
+                  <Calendar className="h-4 w-4" /> Mark Leave
+                </button>
+                <button
+                  onClick={() => {
+                    // Check OD limit
+                    const currentMonth = new Date(selected).getMonth();
+                    const odThisMonth = Object.entries(state.days).filter(([key, entry]) => {
+                      const date = new Date(key);
+                      return date.getMonth() === currentMonth && (entry.type === "od" || entry.type === "pending_od");
+                    }).length;
+
+                    if (odThisMonth >= (state.odAllowancePerMonth || 2)) {
+                      emitAlert("OD limit reached", `You can only apply ${state.odAllowancePerMonth || 2} ODs per month`, "warning");
+                    } else {
+                      markDay(selected, {
+                        type: "pending_od",
+                        odPurpose: "Applied from calendar",
+                        approvalStatus: "pending",
+                        appliedDate: Date.now()
+                      });
+                      emitAlert("OD applied", "Pending approval, will count as WFO day when approved", "success");
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-purple-500 px-3 py-2.5 text-sm font-bold text-white tap tap-press"
+                >
+                  <Briefcase className="h-4 w-4" /> Mark OD
+                </button>
+              </div>
+
               {selectedEntry ? (
                 <button
                   onClick={() => {

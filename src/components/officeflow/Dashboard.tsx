@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ArrowUpRight, Bell, Clock3, Flame, Home as HomeIcon, Building2, ChevronLeft, AlertCircle, Briefcase, Calendar, Edit3, Bus, FileText } from "lucide-react";
 import { WFHSuggestionModal } from "./WFHSuggestionModal";
 import { LeaveApprovalSystem } from "./LeaveApprovalSystem";
+import { TransportReminders } from "./TransportReminders";
 import { useStore } from "@/lib/officeflow/store";
 import { gamification, monthStats, todayEntry } from "@/lib/officeflow/selectors";
 import {
@@ -48,6 +49,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
 
   // State for modals
   const [showWFHModal, setShowWFHModal] = useState(false);
+  const [showTransportReminders, setShowTransportReminders] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [sessionData, setSessionData] = useState<{
     loginTs: number;
@@ -202,7 +204,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
           </button>
 
           <button
-            onClick={() => emitAlert("Transport Schedule", "Feature coming soon", "default")}
+            onClick={() => setShowTransportReminders(true)}
             className="flex items-center gap-3 rounded-lg bg-canvas p-3 text-left tap tap-press"
           >
             <div className="rounded-full bg-lavender p-2">
@@ -311,6 +313,21 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
         <LeaveApprovalSystem
           onClose={() => setShowLeaveModal(false)}
         />
+      )}
+
+      {/* Transport Reminders Modal */}
+      {showTransportReminders && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md">
+            <TransportReminders />
+            <button
+              onClick={() => setShowTransportReminders(false)}
+              className="mt-3 w-full rounded-lg bg-white px-4 py-2 text-sm font-bold text-ink tap tap-press"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
