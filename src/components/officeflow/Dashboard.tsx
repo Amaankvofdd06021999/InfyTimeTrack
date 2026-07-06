@@ -3,6 +3,7 @@ import { ArrowUpRight, Bell, Clock3, Flame, Home as HomeIcon, Building2, Chevron
 import { WFHSuggestionModal } from "./WFHSuggestionModal";
 import { LeaveApprovalSystem } from "./LeaveApprovalSystem";
 import { TransportReminders } from "./TransportReminders";
+import { NotificationPanel } from "./NotificationPanel";
 import { useStore } from "@/lib/officeflow/store";
 import { gamification, monthStats, todayEntry } from "@/lib/officeflow/selectors";
 import {
@@ -329,12 +330,15 @@ export function Dashboard({ onNavigate }: { onNavigate: (v: View) => void }) {
           </div>
         </div>
       )}
+
+      {/* Notification Panel */}
+      <NotificationPanel />
     </div>
   );
 }
 
 function Header() {
-  const { state } = useStore();
+  const { state, unreadCount, setShowNotificationPanel } = useStore();
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const userName = state.userName || "User";
@@ -345,10 +349,17 @@ function Header() {
         <div className="text-xs font-medium text-ink-muted">{greet}, {userName}</div>
         <div className="text-2xl font-extrabold tracking-tight">InfyTimeTrack</div>
       </div>
-      <div className="relative rounded-full bg-white p-2.5 shadow-sm shadow-black/5">
+      <button
+        onClick={() => setShowNotificationPanel(true)}
+        className="relative rounded-full bg-white p-2.5 shadow-sm shadow-black/5 tap tap-press"
+      >
         <Bell className="h-4 w-4" strokeWidth={2.5} />
-        <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-brand-lime" />
-      </div>
+        {unreadCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-lime text-[10px] font-bold text-ink">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
     </header>
   );
 }

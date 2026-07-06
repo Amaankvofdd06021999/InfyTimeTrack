@@ -109,6 +109,15 @@ export interface Banner {
   tone?: "default" | "success" | "warning";
 }
 
+export interface NotificationItem {
+  id: number;
+  title: string;
+  body?: string;
+  tone?: "default" | "success" | "warning";
+  timestamp: number;
+  read: boolean;
+}
+
 interface Ctx {
   state: State;
   setAllowance: (n: number) => void;
@@ -130,6 +139,14 @@ interface Ctx {
   setOnboarded: (onboarded: boolean) => void;
   clearAllData: () => void;
   updateTransportPreferences: (prefs: State["transportPreferences"]) => void;
+  // Notification history
+  notificationHistory: NotificationItem[];
+  unreadCount: number;
+  markNotificationRead: (id: number) => void;
+  markAllNotificationsRead: () => void;
+  clearNotificationHistory: () => void;
+  showNotificationPanel: boolean;
+  setShowNotificationPanel: (show: boolean) => void;
 }
 
 const StoreContext = createContext<Ctx | null>(null);
@@ -140,6 +157,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [now, setNow] = useState<number>(() => Date.now());
   const [banners, setBanners] = useState<Banner[]>([]);
   const [notifyPermission, setNotifyPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [notificationHistory, setNotificationHistory] = useState<NotificationItem[]>([]);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const bannerId = useRef(1);
   const eodPrompted = useRef(false);
 
@@ -166,33 +185,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const pushBanner = useCallback((b: Omit<Banner, "id">) => {
-    setBanners((prev) => {
-      // Check if a banner with the same title already exists
-      const existingBanner = prev.find(banner => banner.title === b.title);
+    const id = bannerId.current++;
 
-      if (existingBanner) {
-        // Banner already exists - make it blink/pulse by removing and re-adding
-        const filtered = prev.filter(banner => banner.id !== existingBanner.id);
-        const id = bannerId.current++;
+    // Add to notification history
+    const notificationItem: NotificationItem = {
+      id,
+      title: b.title,
+      body: b.body,
+      tone: b.tone,
+      timestamp: Date.now(),
+      read: false
+    };
+    setNotificationHistory(prev => [notificationItem, ...prev].slice(0, 50)); // Keep last 50 notifications
 
-        // Brief delay to create a visual pulse effect
-        setTimeout(() => {
-          setBanners(current => [...current, { id, ...b }]);
-          window.setTimeout(() => {
-            setBanners((current) => current.filter((x) => x.id !== id));
-          }, 8000);
-        }, 100);
+    // Clear any existing banner and show only the new one
+    setBanners([{ id, ...b }]);
 
-        return filtered;
-      } else {
-        // New banner - add normally
-        const id = bannerId.current++;
-        window.setTimeout(() => {
-          setBanners((current) => current.filter((x) => x.id !== id));
-        }, 8000);
-        return [...prev, { id, ...b }];
-      }
-    });
+    // Auto-dismiss after 3 seconds (reduced from 8)
+    window.setTimeout(() => {
+      setBanners((current) => current.filter((x) => x.id !== id));
+    }, 3000);
   }, []);
 
   const dismissBanner = useCallback((id: number) => {
@@ -355,6 +367,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [now, state.session, state.days, hydrated, emitAlert, markSessionFlag]);
 
+  // Notification management functions
+  const markNotificationRead = useCallback((id: number) => {
+    setNotificationHistory(prev =>
+      prev.map(notif =>
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
+    setNotificationHistory(prev =>
+      prev.map(notif => ({ ...notif, read: true }))
+    );
+  }, []);
+
+  const clearNotificationHistory = useCallback(() => {
+    setNotificationHistory([]);
+  }, []);
+
+  // Calculate unread count
+  const unreadCount = notificationHistory.filter(n => !n.read).length;
+
   const value = useMemo<Ctx>(
     () => ({
       state,
@@ -377,8 +411,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setOnboarded,
       clearAllData,
       updateTransportPreferences,
+      // Notification history
+      notificationHistory,
+      unreadCount,
+      markNotificationRead,
+      markAllNotificationsRead,
+      clearNotificationHistory,
+      showNotificationPanel,
+      setShowNotificationPanel,
     }),
-    [state, setAllowance, markDay, clearDay, startTimer, stopTimer, markSessionFlag, now, banners, pushBanner, dismissBanner, notifyPermission, requestNotifications, emitAlert, setUserName, setLocalDataEnabled, setNotificationsEnabled, setOnboarded, clearAllData, updateTransportPreferences],
+    [state, setAllowance, markDay, clearDay, startTimer, stopTimer, markSessionFlag, now, banners, pushBanner, dismissBanner, notifyPermission, requestNotifications, emitAlert, setUserName, setLocalDataEnabled, setNotificationsEnabled, setOnboarded, clearAllData, updateTransportPreferences, notificationHistory, unreadCount, markNotificationRead, markAllNotificationsRead, clearNotificationHistory, showNotificationPanel, setShowNotificationPanel],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
